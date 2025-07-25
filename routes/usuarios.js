@@ -1,8 +1,12 @@
 const { Router } = require('express');
-const { usuariosGet, usuariosPut, usuariosPost, usuariosDelete, usuariosPatch } = require('../controllers/usuarios');
 const { check } = require('express-validator');
-const { validarCampos } = require('../middlewares/validar-campos');
-const {esRoleValido, existeCorreo, existeUsuarioPorId} = require('../helpers/db-validators');
+
+const { usuariosGet, usuariosPut, usuariosPost, usuariosDelete, usuariosPatch } = require('../controllers/usuarios');
+
+const { validarCampos, validarJWT, esAdminRole, tieneRole } = require('../middlewares'); //UNIFICA 3 ARCHIVOS EN UN MISMO DIRECTORIO INDEX.JS
+
+const { esRoleValido, existeCorreo, existeUsuarioPorId} = require('../helpers/db-validators');
+
 
 const router = Router();
     //router.<Method>(<path>,<middleware, validators, etc>,<controller>)M
@@ -26,6 +30,9 @@ const router = Router();
     ] , usuariosPost );
 
     router.delete('/:id', [
+        //esAdminRole,
+        validarJWT,
+        tieneRole('SUPER_ROLE','VENTAS_ROLE','TRIMP_ROLE'),
         check('id', 'No es un Id válido').isMongoId(),
         check('id').custom( existeUsuarioPorId ),
         validarCampos
