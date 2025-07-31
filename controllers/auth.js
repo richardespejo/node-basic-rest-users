@@ -1,7 +1,8 @@
-const { response } = require('express');
+const { response, json } = require('express');
 const Usuario = require('../models/usuario');
 const bcrypt = require('bcryptjs');
 const { generarJWT } = require('../helpers/generateJWT');
+const { googleVerify } = require('../helpers/google-verify');
 
 const login = async(req, res = response ) => {
 
@@ -32,7 +33,7 @@ const login = async(req, res = response ) => {
             });
         }
 
-        //Genrar JWT
+        //Generar JWT
         const token = await generarJWT( usuario.id );
 
         res.json({
@@ -48,7 +49,62 @@ const login = async(req, res = response ) => {
         })
     }
 
+}
+
+const googleSignIn = async( req, res = response ) => {
+    const id_token  = req.body.body.id_token;
+
+    try {
+            const {nombre, correo, img} = await googleVerify(id_token);
+
+            let usuario = await Usuario.findOne({ correo });
+
+            if(!usuario) {
+                //Creo el usuario
+                const data = {
+                    nombre,
+                    correo,
+                    password: '123456789',
+                    img,
+                    google: true,
+                    rol: 'USER_ROLE'
+                };
+
+                usuario = new Usuario( data );
+                await usuario.save();
+            }
+
+            //si el usuario esta en DB
+            if( !usuario.estado ){
+                return res.status(401).json({
+                    msg: 'El usuario esta bloqueado, contactar con administrador'
+                });
+            }
+
+            //Genrar JWT
+            const token = await generarJWT( usuario.id );
+
+
+            res.json({
+                msg: 'Todo id_token bien',
+                usuario,
+                token
+            })
+    } catch (error) {
+        console.log(`error`,error);
+        res.status(400).json({
+            ok: false,
+            msg: 'El token id no se pudo verificar'
+        })
+    }
+
+
+
+
 
 }
 
-module.exports = login;
+module.exports = {
+    login,
+    googleSignIn
+};
